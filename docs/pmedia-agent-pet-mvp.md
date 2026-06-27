@@ -34,13 +34,13 @@ Plugin id:
 pmedia.notifications
 ```
 
-Suggested location during development:
+Development location:
 
 ```text
 plugins/dev/pmedia.notifications/
 ```
 
-Suggested files:
+Current files:
 
 ```text
 plugins/dev/pmedia.notifications/
@@ -55,16 +55,20 @@ plugins/dev/pmedia.notifications/
 
 - [ ] Run the fork locally with `pnpm dev:desktop`.
 - [ ] Run OpenPets with plugin hot-loading using `pnpm dev:desktop:plugins`.
-- [ ] Create plugin folder `plugins/dev/pmedia.notifications`.
-- [ ] Add command: `Test PMEDIA notification`.
-- [ ] Show alert bubble with title, message, severity, source, and action.
-- [ ] Play sound for warning/error notifications.
-- [ ] Show OS notification when enabled.
-- [ ] Store recently received notification ids in `ctx.storage` to avoid duplicates.
-- [ ] Add config fields for API base URL, polling interval, and notification toggles.
+- [x] Create plugin folder `plugins/dev/pmedia.notifications`.
+- [x] Add command: `Test PMEDIA notification`.
+- [x] Add command: `Test warning notification`.
+- [x] Show alert bubble with title, message, severity, source, and action.
+- [x] Play sound for warning/error/urgent notifications when enabled.
+- [x] Show OS notification when enabled.
+- [x] Store recently received notification ids in `ctx.storage` to avoid duplicates.
+- [x] Add config fields for minimum severity, polling toggle, polling interval, sound, and OS notification.
+- [ ] Add source configuration page.
+- [ ] Connect to direct generic API sources via HTTPS API.
 - [ ] Connect to PMEDIA Notification Gateway via HTTPS API.
-- [ ] Add GitHub Pull Request notification source.
-- [ ] Add attendance/check-in notification source.
+- [ ] Add ack/dismiss API calls.
+- [ ] Add GitHub special adapter.
+- [ ] Add attendance/check-in notification source as one generic backend.
 
 ## Notification data contract
 
@@ -83,14 +87,10 @@ Suggested backend payload:
 }
 ```
 
-Suggested severity values:
+The canonical protocol is now tracked in:
 
 ```text
-info
-success
-warning
-error
-urgent
+docs/pmedia-agent-notification-protocol.md
 ```
 
 ## Backend API draft
@@ -122,21 +122,21 @@ GitHub Pull Request event
   -> App opens GitHub PR URL
 ```
 
-## Second integration: attendance notification
+## Generic PMEDIA backend integration
 
 Flow:
 
 ```text
-Attendance scheduler detects missing check-in/check-out
-  -> PMEDIA Notification Gateway stores notification
-  -> Desktop pet receives it
-  -> HR/admin opens attendance dashboard from the pet bubble
+Any PMEDIA backend implementing the common protocol
+  -> Direct Generic API Source or Notification Gateway
+  -> pmedia.notifications plugin
+  -> Pet shows alert/bubble/sound/OS notification
 ```
 
 ## Security notes
 
 - API token must be user-configured or stored using plugin secret/auth flow later.
-- Network calls should target a controlled HTTPS domain.
+- Network calls should target controlled HTTPS domains.
 - Avoid localhost/private-network assumptions for production because the OpenPets network layer is designed with SSRF/private-host restrictions.
 - Use least privilege permissions.
 - Keep notification payloads short; do not send sensitive personal data into pet bubbles by default.
@@ -149,25 +149,26 @@ Attendance scheduler detects missing check-in/check-out
 - One command to trigger sample notifications.
 - Validate alert, sound, OS notification, and open action behavior.
 
-### Phase 2: Polling backend
+### Phase 2: Direct generic API source
 
-- Poll `/notifications/unread` every 30-60 seconds.
-- Deduplicate by notification id.
+- Add multiple source configuration.
+- Poll `/api/agent/notifications` every 30-60 seconds.
+- Deduplicate by notification id or `dedupeKey`.
 - Mark read after user action or dismissal.
 
-### Phase 3: GitHub PR source
+### Phase 3: PMEDIA Notification Gateway
 
-- Backend receives GitHub webhook.
-- Map PR events to notification payloads.
-- Route notifications by user/team/repo.
+- Add gateway source type.
+- Add backend publish endpoint.
+- Add central user/team routing and notification history.
 
-### Phase 4: Attendance source
+### Phase 4: Special adapters
 
-- Backend scheduled job checks attendance rules.
-- Send HR/admin notifications only when action is needed.
+- Add GitHub adapter.
+- Convert GitHub events to the same notification envelope.
 
 ### Phase 5: Productization
 
 - Rebrand app name, icon, splash, default pet, default plugins.
-- Package Windows/macOS installers.
+- Package Windows/macOS/Linux installers.
 - Decide whether to keep fork private/public.
