@@ -17,6 +17,8 @@ This plugin implements the first working slice of the PMEDIA Agent Notification 
 - Normalizes generic API / gateway source configs.
 - Builds the standard `/api/agent/notifications?limit=50&cursor=...` URL.
 - Normalizes notification envelope responses from direct generic API sources or the gateway.
+- Calls `/api/agent/notifications/{id}/ack` when the user opens a notification action.
+- Calls `/api/agent/notifications/{id}/dismiss` when the user dismisses a notification.
 
 ## Current network limitation
 
@@ -66,6 +68,26 @@ api-key
 ```
 
 Token storage is intentionally not implemented yet. Use `none` until the credential flow is added through secrets/auth.
+
+## Generic source API contract
+
+Read notifications:
+
+```http
+GET /api/agent/notifications?limit=50&cursor={cursor}
+```
+
+Acknowledge after the user opens the action:
+
+```http
+POST /api/agent/notifications/{id}/ack
+```
+
+Dismiss after the user chooses Dismiss:
+
+```http
+POST /api/agent/notifications/{id}/dismiss
+```
 
 ## Common notification shape
 
@@ -131,6 +153,5 @@ Clear PMEDIA notification cache
 
 - Add a real source configuration panel.
 - Add credential storage using plugin secrets/auth.
-- Add ack/dismiss API calls.
 - Add PMEDIA Notification Gateway backend.
 - Add GitHub as a special adapter.
