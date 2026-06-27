@@ -32,6 +32,24 @@ plugins/dev/pmedia.notifications/
   panels/sources.html
 ```
 
+## Gateway example
+
+Development location:
+
+```text
+examples/pmedia-notification-gateway-dotnet/
+```
+
+Current files:
+
+```text
+examples/pmedia-notification-gateway-dotnet/
+  Pmedia.NotificationGateway.csproj
+  Program.cs
+  appsettings.Development.json
+  README.md
+```
+
 ## MVP feature checklist
 
 - [ ] Run the fork locally with `pnpm dev:desktop`.
@@ -48,13 +66,14 @@ plugins/dev/pmedia.notifications/
 - [x] Add ack/dismiss lifecycle calls.
 - [x] Add credential storage using plugin secrets.
 - [x] Add real source configuration panel.
-- [ ] Add PMEDIA Notification Gateway backend.
+- [x] Add PMEDIA Notification Gateway backend skeleton.
 - [ ] Add GitHub special adapter.
 - [ ] Add attendance/check-in notification source as one generic backend.
 
 ## Backend API draft
 
 ```http
+POST /api/notifications/publish
 GET  /api/agent/notifications?cursor={cursor}&limit=50
 POST /api/agent/notifications/{id}/ack
 POST /api/agent/notifications/{id}/dismiss
@@ -100,12 +119,6 @@ crm.pmedia.vn
 Fully arbitrary domains from the UI will require a later core change for a user-managed network allowlist.
 
 ## Next phases
-
-### Phase 3: PMEDIA Notification Gateway
-
-- Add gateway backend project or endpoint spec.
-- Add backend publish endpoint.
-- Add central user/team routing and notification history.
 
 ### Phase 4: Special adapters
 
