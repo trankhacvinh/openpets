@@ -1,10 +1,16 @@
 // Golden tests for pmedia.notifications.
 import assert from "node:assert/strict";
 import {
+  buildNotificationsUrl,
   compactSeenKeys,
+  demoGatewaySource,
   mapSeverityToRender,
+  normalizeNotificationEnvelope,
   normalizeSeverity,
+  normalizeSourceConfig,
+  normalizeSources,
   notificationKey,
+  pollSources,
   renderNotification,
   sampleNotification,
   shouldShowSeverity,
@@ -31,6 +37,8 @@ const PERMISSIONS = [
   "status",
   "notify",
   "system:openExternal",
+  "network",
+  "network:write",
 ];
 
 const LOCALES = {
@@ -49,6 +57,39 @@ assert.equal(shouldShowSeverity("info", "warning"), false);
 assert.equal(mapSeverityToRender("urgent").priority, "urgent");
 assert.equal(notificationKey({ source: { id: "crm" }, type: "lead", id: "1" }), "crm:lead:1");
 assert.deepEqual(compactSeenKeys(["a", "a", "b"]), ["a", "b"]);
+
+assert.deepEqual(normalizeSourceConfig({ id: "crm-prod", name: "CRM", baseUrl: "https://crm.pmedia.vn/path", enabled: true }), {
+  id: "crm-prod",
+  type: "generic-api",
+  name: "CRM",
+  baseUrl: "https://crm.pmedia.vn",
+  enabled: true,
+  authType: "none",
+});
+assert.equal(normalizeSourceConfig({ id: "bad", baseUrl: "http://crm.pmedia.vn" }), null);
+assert.equal(normalizeSources([demoGatewaySource(), demoGatewaySource()]).length, 1);
+assert.equal(buildNotificationsUrl(demoGatewaySource()), "https://agent-api.pmedia.vn/api/agent/notifications?limit=50");
+
+const envelope = normalizeNotificationEnvelope(
+  {
+    items: [
+      {
+        id: "1",
+        type: "lead_created",
+        severity: "urgent",
+        title: "Lead mới",
+        message: "Khách hàng mới từ website",
+        action: { label: "Mở CRM", url: "https://crm.pmedia.vn/leads/1" },
+      },
+    ],
+    nextCursor: "abc",
+  },
+  { id: "crm-prod", name: "CRM" },
+);
+assert.equal(envelope.items.length, 1);
+assert.equal(envelope.items[0].source.id, "crm-prod");
+assert.equal(envelope.items[0].severity, "urgent");
+assert.equal(envelope.nextCursor, "abc");
 
 // 1) start registers commands and status without showing anything.
 {
@@ -148,6 +189,35 @@ assert.deepEqual(compactSeenKeys(["a", "a", "b"]), ["a", "b"]);
     priority: "high",
   });
   assert.equal(h.calls.alerts.length, 1, "expected warning alert");
+  h.expectNoErrors();
+}
+
+// 6) add demo source and view sources command.
+{
+  const h = createTestHarness(register, {
+    permissions: PERMISSIONS,
+    locales: LOCALES,
+    nowMs: 5_000_000,
+  });
+  await h.start();
+  await h.runCommand("pmedia-add-demo-source");
+  h.expectStored("sources", (sources) => Array.isArray(sources) && sources.length === 1 && sources[0].id === "pmedia-gateway-demo");
+  await h.runCommand("pmedia-view-sources");
+  assert.equal(h.calls.alerts.length, 1, "expected source summary alert");
+  h.expectNoErrors();
+}
+
+// 7) polling without enabled sources exits cleanly.
+{
+  const h = createTestHarness(register, {
+    permissions: PERMISSIONS,
+    locales: LOCALES,
+    nowMs: 6_000_000,
+  });
+  await h.start();
+  const result = await pollSources(h.ctx);
+  assert.deepEqual(result, { sources: 0, count: 0, delivered: 0 });
+  h.expectSpoke(/No enabled/i);
   h.expectNoErrors();
 }
 
