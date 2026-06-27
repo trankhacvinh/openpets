@@ -69,8 +69,8 @@ plugins/dev/pmedia.notifications/
 - [x] Add `/api/agent/notifications` polling foundation.
 - [x] Add `View PMEDIA sources`, `Add demo gateway source`, and `Poll PMEDIA sources now` commands.
 - [x] Add ack/dismiss API lifecycle calls.
+- [x] Add credential storage using plugin secrets/auth.
 - [ ] Add real source configuration panel.
-- [ ] Add credential storage using plugin secrets/auth.
 - [ ] Add PMEDIA Notification Gateway backend.
 - [ ] Add GitHub special adapter.
 - [ ] Add attendance/check-in notification source as one generic backend.
@@ -105,6 +105,16 @@ GET  /api/agent/notifications?cursor={cursor}&limit=50
 POST /api/agent/notifications/{id}/ack
 POST /api/agent/notifications/{id}/dismiss
 ```
+
+Auth header mapping:
+
+```text
+authType=none     -> no auth header
+authType=bearer   -> Authorization: Bearer {token}
+authType=api-key  -> X-API-Key: {token}
+```
+
+Token values are stored in encrypted plugin secrets using `source-token:{sourceId}`.
 
 Later realtime option:
 
@@ -159,7 +169,7 @@ Any PMEDIA backend implementing the common protocol
 
 ## Security notes
 
-- API token must be user-configured or stored using plugin secret/auth flow later.
+- API token must be user-configured or stored using plugin secret/auth flow.
 - Network calls should target controlled HTTPS domains.
 - Avoid localhost/private-network assumptions for production because the OpenPets network layer is designed with SSRF/private-host restrictions.
 - Use least privilege permissions.
