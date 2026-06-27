@@ -55,6 +55,7 @@ jobs:
           name: openpets-desktop-${{ matrix.os }}
           if-no-files-found: warn
           path: |
+            apps/desktop/dist-electron/**
             apps/desktop/dist/**
             apps/desktop/release/**
             apps/desktop/out/**
