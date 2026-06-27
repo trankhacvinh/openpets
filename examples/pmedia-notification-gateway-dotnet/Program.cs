@@ -22,6 +22,7 @@ app.UseCors();
 
 var publishKeys = builder.Configuration.GetSection("PublishApiKeys").Get<string[]>() ?? ["dev-publish-key"];
 var agentKeys = builder.Configuration.GetSection("AgentApiKeys").Get<string[]>() ?? ["dev-agent-key"];
+var githubWebhookSecret = builder.Configuration["GitHub:WebhookSecret"] ?? "dev-github-webhook-secret";
 
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -38,6 +39,8 @@ app.MapPost("/api/notifications/publish", (HttpContext http, PublishNotification
     var result = store.Publish(notification);
     return Results.Ok(new PublishNotificationResponse(result.Id, result.Created, result.Deduped));
 });
+
+app.MapGitHubAdapterEndpoints(githubWebhookSecret);
 
 app.MapGet("/api/agent/notifications", (HttpContext http, NotificationStore store, string? cursor, int? limit) =>
 {
