@@ -34,11 +34,14 @@ jobs:
         with:
           node-version: 22.13.0
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install pnpm
+        run: npm install -g pnpm@11.0.8
 
-      - name: Prepare pnpm
-        run: corepack prepare pnpm@11.0.8 --activate
+      - name: Verify tool versions
+        run: |
+          node --version
+          npm --version
+          pnpm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
