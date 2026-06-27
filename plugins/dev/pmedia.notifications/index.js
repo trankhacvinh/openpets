@@ -327,6 +327,22 @@ export async function getConfiguredSources(ctx) {
   return normalizeSources([...configSources, ...storageSources]);
 }
 
+async function getSourcePanelState(ctx) {
+  const config = await ctx.config.get();
+  const configSources = normalizeSources(config?.sources || []).map((source) => ({ ...source, origin: "config" }));
+  const storageSources = (await getStorageSources(ctx)).map((source) => ({ ...source, origin: "storage" }));
+  const byId = new Map();
+  for (const source of configSources) byId.set(source.id, source);
+  for (const source of storageSources) byId.set(source.id, source);
+  const sources = [];
+  for (const source of byId.values()) {
+    const key = sourceSecretKey(source.id);
+    const credentialConfigured = source.authType === "none" ? false : Boolean(key && (await ctx.secrets.has(key)));
+    sources.push({ ...source, credentialConfigured });
+  }
+  return sources.sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id)));
+}
+
 async function updateSourceStatus(ctx) {
   const sources = await getConfiguredSources(ctx);
   const enabled = sources.filter((source) => source.enabled).length;
@@ -481,6 +497,14 @@ export async function pollSources(ctx, options = {}) {
   return { sources: sources.length, count, delivered };
 }
 
+async function pollSingleSource(ctx, sourceId) {
+  const source = (await getConfiguredSources(ctx)).find((item) => item.id === sanitizeSourceId(sourceId));
+  if (!source) return { sources: 0, count: 0, delivered: 0 };
+  const result = await fetchSourceNotifications(ctx, source);
+  await ctx.status.set({ text: ctx.t("status.poll", { count: result.delivered }), tone: result.delivered > 0 ? "success" : "info" });
+  return { sources: 1, count: result.count, delivered: result.delivered };
+}
+
 async function schedulePolling(ctx) {
   await ctx.schedule.cancel(POLL_TIMER_ID);
   const config = await ctx.config.get();
@@ -518,6 +542,102 @@ async function addDemoSource(ctx) {
   await saveStorageSources(ctx, next);
   await updateSourceStatus(ctx);
   await ctx.pet.speak(ctx.t("speech.sourceAdded"));
+}
+
+async function savePanelSource(ctx, sourceInput, token) {
+  const source = normalizeSourceConfig(sourceInput);
+  if (!source) return false;
+  const existing = await getStorageSources(ctx);
+  const next = normalizeSources([...existing.filter((item) => item.id !== source.id), source]);
+  await saveStorageSources(ctx, next);
+  if (typeof token === "string" && token.trim()) await setSourceCredential(ctx, source.id, token);
+  await updateSourceStatus(ctx);
+  return true;
+}
+
+async function deletePanelSource(ctx, sourceId) {
+  const id = sanitizeSourceId(sourceId);
+  if (!id) return false;
+  const existing = await getStorageSources(ctx);
+  const next = existing.filter((source) => source.id !== id);
+  if (next.length === existing.length) return false;
+  await saveStorageSources(ctx, next);
+  await clearSourceCredential(ctx, id);
+  await ctx.storage.delete(`cursor:${id}`);
+  await updateSourceStatus(ctx);
+  return true;
+}
+
+async function togglePanelSource(ctx, sourceId) {
+  const id = sanitizeSourceId(sourceId);
+  const existing = await getStorageSources(ctx);
+  const index = existing.findIndex((source) => source.id === id);
+  if (index < 0) return false;
+  const next = [...existing];
+  next[index] = { ...next[index], enabled: !next[index].enabled };
+  await saveStorageSources(ctx, next);
+  await updateSourceStatus(ctx);
+  return true;
+}
+
+async function postPanelState(ctx, panel) {
+  await panel.postMessage({ type: "state", sources: await getSourcePanelState(ctx) });
+}
+
+async function openSourcesPanel(ctx) {
+  const panel = await ctx.ui.panel({ panel: "sources", title: "PMEDIA Notification Sources", width: 860, height: 720 });
+  panel.onMessage(async (msg) => {
+    if (!msg || typeof msg !== "object") return;
+    try {
+      if (msg.type === "ready") {
+        await postPanelState(ctx, panel);
+        return;
+      }
+      if (msg.type === "saveSource") {
+        const ok = await savePanelSource(ctx, msg.source, msg.token);
+        if (!ok) await panel.postMessage({ type: "error", message: ctx.t("speech.sourceInvalid") });
+        else {
+          await panel.postMessage({ type: "saved" });
+          await postPanelState(ctx, panel);
+          await ctx.pet.speak(ctx.t("speech.sourceSaved"));
+        }
+        return;
+      }
+      if (msg.type === "deleteSource") {
+        const ok = await deletePanelSource(ctx, msg.id);
+        await panel.postMessage({ type: ok ? "info" : "error", message: ok ? ctx.t("speech.sourceDeleted") : ctx.t("speech.sourceReadonly") });
+        await postPanelState(ctx, panel);
+        return;
+      }
+      if (msg.type === "toggleSource") {
+        const ok = await togglePanelSource(ctx, msg.id);
+        await panel.postMessage({ type: ok ? "info" : "error", message: ok ? ctx.t("speech.sourceSaved") : ctx.t("speech.sourceReadonly") });
+        await postPanelState(ctx, panel);
+        return;
+      }
+      if (msg.type === "clearToken") {
+        const ok = await clearSourceCredential(ctx, msg.id);
+        await panel.postMessage({ type: ok ? "info" : "error", message: ok ? ctx.t("speech.tokenCleared") : ctx.t("speech.tokenInvalid") });
+        await postPanelState(ctx, panel);
+        return;
+      }
+      if (msg.type === "pollSource") {
+        const result = await pollSingleSource(ctx, msg.id);
+        await panel.postMessage({ type: "info", message: `Poll complete: ${result.delivered} delivered / ${result.count} received.` });
+        await postPanelState(ctx, panel);
+        return;
+      }
+      if (msg.type === "pollAll") {
+        const result = await pollSources(ctx);
+        await panel.postMessage({ type: "info", message: `Poll complete: ${result.delivered} delivered / ${result.count} received.` });
+        await postPanelState(ctx, panel);
+      }
+    } catch (err) {
+      await ctx.log.warn("PMEDIA sources panel action failed", err?.message || err);
+      await panel.postMessage({ type: "error", message: err?.message || "Panel action failed." });
+    }
+  });
+  await postPanelState(ctx, panel);
 }
 
 async function saveTokenFromCommand(ctx, values = {}) {
@@ -565,6 +685,17 @@ export function register(OpenPetsPlugin) {
           icon: "bell",
         },
         () => showSources(ctx),
+      );
+
+      await ctx.commands.register(
+        {
+          id: "pmedia-open-sources-panel",
+          title: "$t:command.openSourcesPanel.title",
+          description: "$t:command.openSourcesPanel.description",
+          icon: "bell",
+          featured: true,
+        },
+        () => openSourcesPanel(ctx),
       );
 
       await ctx.commands.register(
