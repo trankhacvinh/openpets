@@ -9,10 +9,12 @@ This plugin implements the first working slice of the PMEDIA Agent Notification 
 - Registers a `Test PMEDIA notification` command.
 - Registers a `Test warning notification` command.
 - Registers `View PMEDIA sources`, `Add demo gateway source`, and `Poll PMEDIA sources now` commands.
+- Registers `Set PMEDIA source token` and `Clear PMEDIA source token` commands.
 - Renders notifications using the common PMEDIA envelope.
 - Maps severity to pet alert tone, reaction, sound, and priority.
 - Supports local deduplication using `dedupeKey`.
 - Stores recently shown notification keys in plugin storage.
+- Stores source credentials in encrypted plugin secrets using `source-token:{sourceId}`.
 - Supports minimum severity, sound, OS notification, polling toggle, polling interval, and source list config.
 - Normalizes generic API / gateway source configs.
 - Builds the standard `/api/agent/notifications?limit=50&cursor=...` URL.
@@ -46,7 +48,7 @@ That means the plugin can poll those hosts after the user approves the network p
   "name": "App chấm công",
   "baseUrl": "https://chamcong.pmedia.vn",
   "enabled": true,
-  "authType": "none"
+  "authType": "bearer"
 }
 ```
 
@@ -67,7 +69,21 @@ bearer
 api-key
 ```
 
-Token storage is intentionally not implemented yet. Use `none` until the credential flow is added through secrets/auth.
+Token values are not stored in the source config JSON. They are stored in encrypted plugin secrets with this key format:
+
+```text
+source-token:{sourceId}
+```
+
+Use the command `Set PMEDIA source token` to save a token/API key for a configured source. Use `Clear PMEDIA source token` to remove it.
+
+Auth header mapping:
+
+```text
+authType=none     -> no auth header
+authType=bearer   -> Authorization: Bearer {token}
+authType=api-key  -> X-API-Key: {token}
+```
 
 ## Generic source API contract
 
@@ -143,6 +159,8 @@ Test PMEDIA notification
 Test warning notification
 Add demo gateway source
 View PMEDIA sources
+Set PMEDIA source token
+Clear PMEDIA source token
 Poll PMEDIA sources now
 Clear PMEDIA notification cache
 ```
@@ -152,6 +170,5 @@ Clear PMEDIA notification cache
 ## Next phase
 
 - Add a real source configuration panel.
-- Add credential storage using plugin secrets/auth.
 - Add PMEDIA Notification Gateway backend.
 - Add GitHub as a special adapter.
