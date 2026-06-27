@@ -3,7 +3,7 @@
   "id": "pmedia.notifications",
   "name": "$t:plugin.name",
   "description": "$t:plugin.description",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "runtime": "javascript",
   "icon": "bell",
   "sdkVersion": "3.0.0",
@@ -18,8 +18,20 @@
     "commands",
     "status",
     "notify",
-    "system:openExternal"
+    "system:openExternal",
+    "network",
+    "network:write"
   ],
+  "network": {
+    "hosts": [
+      "agent-api.pmedia.vn",
+      "api.pmedia.vn",
+      "pmedia.vn",
+      "chamcong.pmedia.vn",
+      "logistics.pmedia.vn",
+      "crm.pmedia.vn"
+    ]
+  },
   "configSchema": {
     "minSeverity": {
       "type": "select",
@@ -55,8 +67,63 @@
     "pollIntervalSeconds": {
       "type": "number",
       "default": 60,
+      "min": 30,
+      "max": 3600,
       "label": "$t:config.pollIntervalSeconds.label",
       "description": "$t:config.pollIntervalSeconds.description"
+    },
+    "sources": {
+      "type": "list",
+      "default": [],
+      "maxItems": 20,
+      "label": "$t:config.sources.label",
+      "description": "$t:config.sources.description",
+      "itemSchema": {
+        "id": {
+          "type": "text",
+          "label": "$t:config.sources.id.label",
+          "description": "$t:config.sources.id.description"
+        },
+        "type": {
+          "type": "select",
+          "default": "generic-api",
+          "label": "$t:config.sources.type.label",
+          "description": "$t:config.sources.type.description",
+          "options": [
+            { "value": "generic-api", "label": "$t:sourceType.genericApi" },
+            { "value": "notification-gateway", "label": "$t:sourceType.gateway" },
+            { "value": "github", "label": "$t:sourceType.github" },
+            { "value": "custom-adapter", "label": "$t:sourceType.customAdapter" }
+          ]
+        },
+        "name": {
+          "type": "text",
+          "label": "$t:config.sources.name.label",
+          "description": "$t:config.sources.name.description"
+        },
+        "baseUrl": {
+          "type": "text",
+          "label": "$t:config.sources.baseUrl.label",
+          "description": "$t:config.sources.baseUrl.description"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "label": "$t:config.sources.enabled.label",
+          "description": "$t:config.sources.enabled.description"
+        },
+        "authType": {
+          "type": "select",
+          "default": "none",
+          "label": "$t:config.sources.authType.label",
+          "description": "$t:config.sources.authType.description",
+          "options": [
+            { "value": "none", "label": "$t:auth.none" },
+            { "value": "bearer", "label": "$t:auth.bearer" },
+            { "value": "api-key", "label": "$t:auth.apiKey" }
+          ]
+        }
+      }
     }
   }
 }
