@@ -44,6 +44,7 @@ const PERMISSIONS = [
   "network",
   "network:write",
   "secrets",
+  "ui:panel",
 ];
 
 const LOCALES = {
