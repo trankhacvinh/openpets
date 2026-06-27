@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import {
   buildAckUrl,
+  buildAuthHeadersFromToken,
   buildDismissUrl,
   buildNotificationsUrl,
   compactSeenKeys,
@@ -16,6 +17,7 @@ import {
   renderNotification,
   sampleNotification,
   shouldShowSeverity,
+  sourceSecretKey,
   register,
 } from "./index.js";
 
@@ -41,6 +43,7 @@ const PERMISSIONS = [
   "system:openExternal",
   "network",
   "network:write",
+  "secrets",
 ];
 
 const LOCALES = {
@@ -59,6 +62,11 @@ assert.equal(shouldShowSeverity("info", "warning"), false);
 assert.equal(mapSeverityToRender("urgent").priority, "urgent");
 assert.equal(notificationKey({ source: { id: "crm" }, type: "lead", id: "1" }), "crm:lead:1");
 assert.deepEqual(compactSeenKeys(["a", "a", "b"]), ["a", "b"]);
+assert.equal(sourceSecretKey("crm-prod"), "source-token:crm-prod");
+assert.equal(sourceSecretKey("crm prod!"), "source-token:crmprod");
+assert.deepEqual(buildAuthHeadersFromToken({ authType: "none" }, "secret"), {});
+assert.deepEqual(buildAuthHeadersFromToken({ authType: "bearer" }, " secret "), { Authorization: "Bearer secret" });
+assert.deepEqual(buildAuthHeadersFromToken({ authType: "api-key" }, " secret "), { "X-API-Key": "secret" });
 
 assert.deepEqual(normalizeSourceConfig({ id: "crm-prod", name: "CRM", baseUrl: "https://crm.pmedia.vn/path", enabled: true }), {
   id: "crm-prod",
