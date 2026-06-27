@@ -41,6 +41,10 @@ export function cleanText(value, fallback = "") {
     .slice(0, 240);
 }
 
+export function sanitizeSourceId(value) {
+  return cleanText(value, "").replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 64);
+}
+
 export function notificationKey(notification) {
   if (notification?.dedupeKey) return String(notification.dedupeKey).slice(0, 180);
   const sourceId = notification?.source?.id || "unknown";
@@ -121,7 +125,7 @@ export function mapSeverityToRender(severity) {
 
 export function normalizeSourceConfig(value) {
   if (!value || typeof value !== "object") return null;
-  const id = cleanText(value.id, "").replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 64);
+  const id = sanitizeSourceId(value.id);
   const baseUrl = cleanText(value.baseUrl, "");
   if (!id || !baseUrl) return null;
 
@@ -166,6 +170,42 @@ export function demoGatewaySource() {
     enabled: false,
     authType: "none",
   };
+}
+
+export function sourceSecretKey(sourceId) {
+  const id = sanitizeSourceId(sourceId);
+  return id ? `source-token:${id}` : "";
+}
+
+export function buildAuthHeadersFromToken(source, token) {
+  const trimmedToken = typeof token === "string" ? token.trim() : "";
+  if (!source || source.authType === "none" || !trimmedToken) return {};
+  if (source.authType === "bearer") return { Authorization: `Bearer ${trimmedToken}` };
+  if (source.authType === "api-key") return { "X-API-Key": trimmedToken };
+  return {};
+}
+
+export async function getSourceAuthHeaders(ctx, source) {
+  if (!source || source.authType === "none") return {};
+  const key = sourceSecretKey(source.id);
+  if (!key) return {};
+  const token = await ctx.secrets.get(key);
+  return buildAuthHeadersFromToken(source, token);
+}
+
+export async function setSourceCredential(ctx, sourceId, token) {
+  const key = sourceSecretKey(sourceId);
+  const trimmedToken = typeof token === "string" ? token.trim() : "";
+  if (!key || !trimmedToken) return false;
+  await ctx.secrets.set(key, trimmedToken);
+  return true;
+}
+
+export async function clearSourceCredential(ctx, sourceId) {
+  const key = sourceSecretKey(sourceId);
+  if (!key) return false;
+  await ctx.secrets.delete(key);
+  return true;
 }
 
 export function normalizeNotificationEnvelope(payload, source) {
@@ -299,7 +339,8 @@ export async function postNotificationLifecycle(ctx, source, notification, actio
   const url = buildNotificationLifecycleUrl(source, notificationId, action);
   if (!url) return { ok: false, skipped: true, reason: "missing_source_or_id" };
   try {
-    const response = await ctx.net.fetch(url, { method: "POST", timeoutMs: 10_000 });
+    const headers = await getSourceAuthHeaders(ctx, source);
+    const response = await ctx.net.fetch(url, { method: "POST", headers, timeoutMs: 10_000 });
     if (!response.ok) {
       await ctx.log.warn("PMEDIA notification lifecycle call failed", source.id, notificationId, action, response.status);
     }
@@ -399,7 +440,8 @@ export async function fetchSourceNotifications(ctx, source) {
   const cursorKey = `cursor:${source.id}`;
   const cursor = (await ctx.storage.get(cursorKey)) || "";
   const url = buildNotificationsUrl(source, cursor);
-  const response = await ctx.net.fetch(url, { method: "GET", timeoutMs: 15_000 });
+  const headers = await getSourceAuthHeaders(ctx, source);
+  const response = await ctx.net.fetch(url, { method: "GET", headers, timeoutMs: 15_000 });
   if (!response.ok) {
     await ctx.log.warn("PMEDIA source returned non-OK status", source.id, response.status);
     return { source, count: 0, delivered: 0, error: `HTTP ${response.status}` };
@@ -454,7 +496,7 @@ async function showSources(ctx) {
     return;
   }
   const enabled = sources.filter((source) => source.enabled).length;
-  const lines = sources.map((source) => `${source.enabled ? "●" : "○"} ${source.name} (${source.type})`).join("\n");
+  const lines = sources.map((source) => `${source.enabled ? "●" : "○"} ${source.name} (${source.type}/${source.authType})`).join("\n");
   await ctx.ui.alert({
     text: `PMEDIA sources: ${sources.length} configured, ${enabled} enabled\n${lines}`,
     indicator: {
@@ -476,6 +518,16 @@ async function addDemoSource(ctx) {
   await saveStorageSources(ctx, next);
   await updateSourceStatus(ctx);
   await ctx.pet.speak(ctx.t("speech.sourceAdded"));
+}
+
+async function saveTokenFromCommand(ctx, values = {}) {
+  const ok = await setSourceCredential(ctx, values.sourceId, values.token);
+  await ctx.pet.speak(ctx.t(ok ? "speech.tokenSaved" : "speech.tokenInvalid"));
+}
+
+async function clearTokenFromCommand(ctx, values = {}) {
+  const ok = await clearSourceCredential(ctx, values.sourceId);
+  await ctx.pet.speak(ctx.t(ok ? "speech.tokenCleared" : "speech.tokenInvalid"));
 }
 
 export function register(OpenPetsPlugin) {
@@ -533,6 +585,37 @@ export function register(OpenPetsPlugin) {
           icon: "timer",
         },
         () => pollSources(ctx),
+      );
+
+      await ctx.commands.register(
+        {
+          id: "pmedia-set-source-token",
+          title: "$t:command.setSourceToken.title",
+          description: "$t:command.setSourceToken.description",
+          icon: "bell",
+          form: {
+            fields: [
+              { id: "sourceId", type: "text", label: "Source ID", required: true },
+              { id: "token", type: "text", label: "Token / API key", required: true },
+            ],
+            submitLabel: "Save token",
+          },
+        },
+        (values) => saveTokenFromCommand(ctx, values),
+      );
+
+      await ctx.commands.register(
+        {
+          id: "pmedia-clear-source-token",
+          title: "$t:command.clearSourceToken.title",
+          description: "$t:command.clearSourceToken.description",
+          icon: "trash",
+          form: {
+            fields: [{ id: "sourceId", type: "text", label: "Source ID", required: true }],
+            submitLabel: "Clear token",
+          },
+        },
+        (values) => clearTokenFromCommand(ctx, values),
       );
 
       await ctx.commands.register(
