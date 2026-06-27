@@ -3,7 +3,7 @@
   "id": "pmedia.notifications",
   "name": "$t:plugin.name",
   "description": "$t:plugin.description",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "runtime": "javascript",
   "icon": "bell",
   "sdkVersion": "3.0.0",
@@ -20,7 +20,8 @@
     "notify",
     "system:openExternal",
     "network",
-    "network:write"
+    "network:write",
+    "secrets"
   ],
   "network": {
     "hosts": [
