@@ -1,6 +1,8 @@
 // Golden tests for pmedia.notifications.
 import assert from "node:assert/strict";
 import {
+  buildAckUrl,
+  buildDismissUrl,
   buildNotificationsUrl,
   compactSeenKeys,
   demoGatewaySource,
@@ -69,6 +71,8 @@ assert.deepEqual(normalizeSourceConfig({ id: "crm-prod", name: "CRM", baseUrl: "
 assert.equal(normalizeSourceConfig({ id: "bad", baseUrl: "http://crm.pmedia.vn" }), null);
 assert.equal(normalizeSources([demoGatewaySource(), demoGatewaySource()]).length, 1);
 assert.equal(buildNotificationsUrl(demoGatewaySource()), "https://agent-api.pmedia.vn/api/agent/notifications?limit=50");
+assert.equal(buildAckUrl(demoGatewaySource(), "abc 123"), "https://agent-api.pmedia.vn/api/agent/notifications/abc%20123/ack");
+assert.equal(buildDismissUrl(demoGatewaySource(), "abc 123"), "https://agent-api.pmedia.vn/api/agent/notifications/abc%20123/dismiss");
 
 const envelope = normalizeNotificationEnvelope(
   {
