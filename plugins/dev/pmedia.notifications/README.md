@@ -8,8 +8,9 @@ This plugin implements the first working slice of the PMEDIA Agent Notification 
 
 - Registers a `Test PMEDIA notification` command.
 - Registers a `Test warning notification` command.
-- Registers `View PMEDIA sources`, `Add demo gateway source`, and `Poll PMEDIA sources now` commands.
+- Registers `View PMEDIA sources`, `Configure PMEDIA sources`, `Add demo gateway source`, and `Poll PMEDIA sources now` commands.
 - Registers `Set PMEDIA source token` and `Clear PMEDIA source token` commands.
+- Ships a sandboxed `sources` panel for add/edit/delete/toggle/poll source workflows.
 - Renders notifications using the common PMEDIA envelope.
 - Maps severity to pet alert tone, reaction, sound, and priority.
 - Supports local deduplication using `dedupeKey`.
@@ -38,6 +39,29 @@ crm.pmedia.vn
 ```
 
 That means the plugin can poll those hosts after the user approves the network permission. Fully arbitrary user-entered domains will require a later core change to support a user-managed allowlist.
+
+## Source configuration panel
+
+Open the pet menu command:
+
+```text
+Configure PMEDIA sources
+```
+
+The panel supports:
+
+```text
+Add source
+Edit panel-managed source
+Enable / disable source
+Delete panel-managed source
+Set or replace source token
+Clear source token
+Poll one source
+Poll all sources
+```
+
+Sources defined in the OpenPets plugin config are shown as read-only inside the panel. Panel-managed sources are stored in plugin storage.
 
 ## Source config shape
 
@@ -75,7 +99,7 @@ Token values are not stored in the source config JSON. They are stored in encryp
 source-token:{sourceId}
 ```
 
-Use the command `Set PMEDIA source token` to save a token/API key for a configured source. Use `Clear PMEDIA source token` to remove it.
+Use the panel token field or the command `Set PMEDIA source token` to save a token/API key for a configured source. Use `Clear PMEDIA source token` to remove it.
 
 Auth header mapping:
 
@@ -155,6 +179,7 @@ plugins/dev/pmedia.notifications
 Use the pet menu commands:
 
 ```text
+Configure PMEDIA sources
 Test PMEDIA notification
 Test warning notification
 Add demo gateway source
@@ -165,10 +190,9 @@ Poll PMEDIA sources now
 Clear PMEDIA notification cache
 ```
 
-`Add demo gateway source` adds a disabled source pointing at `https://agent-api.pmedia.vn`. Enable real sources through plugin config once a backend endpoint is available.
+`Add demo gateway source` adds a disabled source pointing at `https://agent-api.pmedia.vn`. Enable real sources through the configuration panel once a backend endpoint is available.
 
 ## Next phase
 
-- Add a real source configuration panel.
 - Add PMEDIA Notification Gateway backend.
 - Add GitHub as a special adapter.
