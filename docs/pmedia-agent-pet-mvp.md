@@ -46,8 +46,10 @@ Current files:
 examples/pmedia-notification-gateway-dotnet/
   Pmedia.NotificationGateway.csproj
   Program.cs
+  GitHubWebhookAdapter.cs
   appsettings.Development.json
   README.md
+  GITHUB_ADAPTER.md
 ```
 
 ## MVP feature checklist
@@ -67,13 +69,14 @@ examples/pmedia-notification-gateway-dotnet/
 - [x] Add credential storage using plugin secrets.
 - [x] Add real source configuration panel.
 - [x] Add PMEDIA Notification Gateway backend skeleton.
-- [ ] Add GitHub special adapter.
+- [x] Add GitHub special adapter.
 - [ ] Add attendance/check-in notification source as one generic backend.
 
 ## Backend API draft
 
 ```http
 POST /api/notifications/publish
+POST /api/adapters/github/webhook
 GET  /api/agent/notifications?cursor={cursor}&limit=50
 POST /api/agent/notifications/{id}/ack
 POST /api/agent/notifications/{id}/dismiss
@@ -119,11 +122,6 @@ crm.pmedia.vn
 Fully arbitrary domains from the UI will require a later core change for a user-managed network allowlist.
 
 ## Next phases
-
-### Phase 4: Special adapters
-
-- Add GitHub adapter.
-- Convert GitHub events to the same notification envelope.
 
 ### Phase 5: Productization
 
