@@ -3,7 +3,7 @@
   "id": "pmedia.notifications",
   "name": "$t:plugin.name",
   "description": "$t:plugin.description",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "runtime": "javascript",
   "icon": "bell",
   "sdkVersion": "3.0.0",
