@@ -63,10 +63,15 @@ plugins/dev/pmedia.notifications/
 - [x] Show OS notification when enabled.
 - [x] Store recently received notification ids in `ctx.storage` to avoid duplicates.
 - [x] Add config fields for minimum severity, polling toggle, polling interval, sound, and OS notification.
-- [ ] Add source configuration page.
-- [ ] Connect to direct generic API sources via HTTPS API.
-- [ ] Connect to PMEDIA Notification Gateway via HTTPS API.
+- [x] Add source list config schema.
+- [x] Add direct generic API source normalization.
+- [x] Add Notification Gateway source type.
+- [x] Add `/api/agent/notifications` polling foundation.
+- [x] Add `View PMEDIA sources`, `Add demo gateway source`, and `Poll PMEDIA sources now` commands.
+- [ ] Add real source configuration panel.
+- [ ] Add credential storage using plugin secrets/auth.
 - [ ] Add ack/dismiss API calls.
+- [ ] Add PMEDIA Notification Gateway backend.
 - [ ] Add GitHub special adapter.
 - [ ] Add attendance/check-in notification source as one generic backend.
 
@@ -96,17 +101,33 @@ docs/pmedia-agent-notification-protocol.md
 ## Backend API draft
 
 ```http
-GET  /api/agent-pet/notifications/unread
-POST /api/agent-pet/notifications/{id}/read
+GET  /api/agent/notifications?cursor={cursor}&limit=50
+POST /api/agent/notifications/{id}/ack
+POST /api/agent/notifications/{id}/dismiss
 ```
 
 Later realtime option:
 
 ```http
-GET /api/agent-pet/notifications/stream
+GET /api/agent/notifications/stream
 ```
 
-Use SSE/chunked streaming before adding WebSocket/SignalR support inside the desktop runtime.
+Use polling before adding SSE, WebSocket, or SignalR support.
+
+## Network limitation in current plugin approach
+
+OpenPets plugin network permissions are manifest-driven and exact-host based. The dev plugin currently allows a small set of PMEDIA hosts:
+
+```text
+agent-api.pmedia.vn
+api.pmedia.vn
+pmedia.vn
+chamcong.pmedia.vn
+logistics.pmedia.vn
+crm.pmedia.vn
+```
+
+This is enough for the first PMEDIA-owned sources. Fully arbitrary domains from the UI will require a later core change for a user-managed network allowlist.
 
 ## First integration: GitHub PR notification
 
