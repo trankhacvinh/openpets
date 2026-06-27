@@ -3,7 +3,7 @@
   "id": "pmedia.notifications",
   "name": "$t:plugin.name",
   "description": "$t:plugin.description",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "runtime": "javascript",
   "icon": "bell",
   "sdkVersion": "3.0.0",
@@ -21,7 +21,8 @@
     "system:openExternal",
     "network",
     "network:write",
-    "secrets"
+    "secrets",
+    "ui:panel"
   ],
   "network": {
     "hosts": [
@@ -32,6 +33,9 @@
       "logistics.pmedia.vn",
       "crm.pmedia.vn"
     ]
+  },
+  "panels": {
+    "sources": "panels/sources.html"
   },
   "configSchema": {
     "minSeverity": {
