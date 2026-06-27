@@ -46,11 +46,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace
+        run: pnpm build
+
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Build and package desktop app
-        run: pnpm package:desktop
+      - name: Package desktop app
+        run: pnpm --filter @open-pets/desktop package
 
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
