@@ -209,6 +209,20 @@ export function buildNotificationsUrl(source, cursor = "") {
   return url.toString();
 }
 
+export function buildNotificationLifecycleUrl(source, notificationId, action) {
+  if (!source?.baseUrl || !notificationId || !["ack", "dismiss"].includes(action)) return "";
+  const id = encodeURIComponent(String(notificationId));
+  return new URL(`/api/agent/notifications/${id}/${action}`, source.baseUrl).toString();
+}
+
+export function buildAckUrl(source, notificationId) {
+  return buildNotificationLifecycleUrl(source, notificationId, "ack");
+}
+
+export function buildDismissUrl(source, notificationId) {
+  return buildNotificationLifecycleUrl(source, notificationId, "dismiss");
+}
+
 export function sampleNotification(severity = "info") {
   const normalized = normalizeSeverity(severity);
   const isWarning = normalized === "warning";
@@ -280,6 +294,30 @@ async function updateSourceStatus(ctx) {
   return sources;
 }
 
+export async function postNotificationLifecycle(ctx, source, notification, action) {
+  const notificationId = notification?.id;
+  const url = buildNotificationLifecycleUrl(source, notificationId, action);
+  if (!url) return { ok: false, skipped: true, reason: "missing_source_or_id" };
+  try {
+    const response = await ctx.net.fetch(url, { method: "POST", timeoutMs: 10_000 });
+    if (!response.ok) {
+      await ctx.log.warn("PMEDIA notification lifecycle call failed", source.id, notificationId, action, response.status);
+    }
+    return { ok: response.ok, status: response.status };
+  } catch (err) {
+    await ctx.log.warn("PMEDIA notification lifecycle call threw", source?.id, notificationId, action, err?.message || err);
+    return { ok: false, error: err?.message || String(err) };
+  }
+}
+
+export function ackNotification(ctx, source, notification) {
+  return postNotificationLifecycle(ctx, source, notification, "ack");
+}
+
+export function dismissNotification(ctx, source, notification) {
+  return postNotificationLifecycle(ctx, source, notification, "dismiss");
+}
+
 export async function renderNotification(ctx, notification, options = {}) {
   const config = { ...(await ctx.config.get()), ...options.config };
   const severity = normalizeSeverity(notification?.severity);
@@ -302,6 +340,7 @@ export async function renderNotification(ctx, notification, options = {}) {
   const render = mapSeverityToRender(severity);
   const soundEnabled = config.soundEnabled !== false;
   const osNotificationEnabled = config.osNotificationEnabled !== false;
+  const source = options.source || null;
 
   try {
     await ctx.pet.react(render.reaction, { showMessage: false });
@@ -346,6 +385,9 @@ export async function renderNotification(ctx, notification, options = {}) {
       } catch (err) {
         await ctx.log.warn("Failed to open PMEDIA notification action URL", err?.message || err);
       }
+      await ackNotification(ctx, source, notification);
+    } else if (actionId === "dismiss") {
+      await dismissNotification(ctx, source, notification);
     }
   });
 
@@ -367,7 +409,7 @@ export async function fetchSourceNotifications(ctx, source) {
   const envelope = normalizeNotificationEnvelope(payload, source);
   let delivered = 0;
   for (const notification of envelope.items) {
-    const result = await renderNotification(ctx, notification);
+    const result = await renderNotification(ctx, notification, { source });
     if (result.delivered) delivered += 1;
   }
   if (envelope.nextCursor) await ctx.storage.set(cursorKey, envelope.nextCursor);
