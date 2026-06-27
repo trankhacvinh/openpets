@@ -21,6 +21,8 @@ files:
 extraResources:
   - from: ../../plugins/official
     to: plugins/official
+  - from: ../../plugins/dev/pmedia.notifications
+    to: plugins/dev/pmedia.notifications
 
 asar: true
 asarUnpack:
