@@ -86,6 +86,7 @@ if (!gotSingleInstanceLock) {
     releaseStartupInstallLock();
     const roots = parseDevPluginEnv(process.env.OPENPETS_DEV_PLUGIN_ROOTS);
     const paths = parseDevPluginEnv(process.env.OPENPETS_DEV_PLUGIN_PATHS);
+    const bundledDevRoots = resolveBundledDevPluginRoots();
     const devPluginMode = roots.length > 0 || paths.length > 0;
     initializePluginPlatformSettings(app.getPath("userData"));
     const pluginCapabilities = createElectronPluginHostCapabilities(app.getPath("userData"));
@@ -117,6 +118,10 @@ if (!gotSingleInstanceLock) {
         const results = await service.loadLocalRoots(roots, { autoApprove: true, pruneStale: true });
         for (const result of results) if (!result.ok) logError("app", "dev plugin root load failed", new Error(`${result.path}: ${result.error}`));
       }
+      if (bundledDevRoots.length > 0) {
+        const results = await service.loadLocalRoots(bundledDevRoots, { autoApprove: true, pruneStale: false });
+        for (const result of results) if (!result.ok) logError("app", "bundled dev plugin root load failed", new Error(`${result.path}: ${result.error}`));
+      }
       const watchPaths = Array.from(new Set([...paths, ...service.getLocalSourcePaths()]));
       if (devPluginMode || watchPaths.length > 0) devPluginWatcher = startDevPluginWatcher(service, roots, watchPaths);
     })().catch((error) => logError("app", "plugin service startup failed", error));
@@ -138,6 +143,11 @@ function parseDevPluginEnv(value: string | undefined): string[] {
 
 function resolveBundledOfficialPluginRoots(): string[] {
   const candidates = [join(process.resourcesPath, "plugins", "official"), resolve(process.cwd(), "plugins", "official"), resolve(app.getAppPath(), "..", "..", "plugins", "official")];
+  return Array.from(new Set(candidates.filter((candidate) => existsSync(candidate))));
+}
+
+function resolveBundledDevPluginRoots(): string[] {
+  const candidates = [join(process.resourcesPath, "plugins", "dev"), resolve(process.cwd(), "plugins", "dev"), resolve(app.getAppPath(), "..", "..", "plugins", "dev")];
   return Array.from(new Set(candidates.filter((candidate) => existsSync(candidate))));
 }
 

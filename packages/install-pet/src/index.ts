@@ -139,7 +139,7 @@ async function tryInstallThroughRunningApp(petId: string): Promise<InstallPetRes
   try {
     const result = await createOpenPetsClient({ responseTimeoutMs: 60_000 }).installPet(petId);
     return { petId: result.petId, displayName: result.displayName, via: "app" };
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof OpenPetsClientError && appUnavailableErrorCodes.has(error.code)) return null;
     if (error instanceof OpenPetsClientError && appTooOldErrorCodes.has(error.code)) {
       throw new Error("Your running OpenPets app is too old for CLI pet installs. Quit OpenPets and retry, or update OpenPets.");
@@ -170,7 +170,7 @@ async function installPetDirectly(petId: string): Promise<InstallPetResult> {
       await validateExtractedPet(tempDir);
       await rm(finalDir, { recursive: true, force: true });
       await rename(tempDir, finalDir);
-    } catch (error) {
+    } catch (error: unknown) {
       await rm(tempDir, { recursive: true, force: true });
       throw error;
     }
@@ -191,8 +191,8 @@ async function acquireDirectInstallLock(userData: string): Promise<() => Promise
       return async () => {
         await rm(lockPath, { recursive: true, force: true }).catch(() => undefined);
       };
-    } catch (error) {
-      const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+    } catch (error: unknown) {
+      const code = getErrorCode(error);
       if (code !== "EEXIST") throw error;
       if (await isStaleInstallLock(lockPath)) {
         await rm(lockPath, { recursive: true, force: true });
@@ -223,10 +223,16 @@ function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (error) {
-    const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  } catch (error: unknown) {
+    const code = getErrorCode(error);
     return code === "EPERM";
   }
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("code" in error)) return undefined;
+  const code = (error as { readonly code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
 }
 
 async function getCatalogPet(petId: string): Promise<CatalogPet> {
