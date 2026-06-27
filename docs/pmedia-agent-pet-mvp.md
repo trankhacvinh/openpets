@@ -68,9 +68,9 @@ plugins/dev/pmedia.notifications/
 - [x] Add Notification Gateway source type.
 - [x] Add `/api/agent/notifications` polling foundation.
 - [x] Add `View PMEDIA sources`, `Add demo gateway source`, and `Poll PMEDIA sources now` commands.
+- [x] Add ack/dismiss API lifecycle calls.
 - [ ] Add real source configuration panel.
 - [ ] Add credential storage using plugin secrets/auth.
-- [ ] Add ack/dismiss API calls.
 - [ ] Add PMEDIA Notification Gateway backend.
 - [ ] Add GitHub special adapter.
 - [ ] Add attendance/check-in notification source as one generic backend.
@@ -141,6 +141,7 @@ GitHub Pull Request event
   -> Pet shows alert
   -> User clicks Open
   -> App opens GitHub PR URL
+  -> Plugin posts ack back to the gateway
 ```
 
 ## Generic PMEDIA backend integration
@@ -152,6 +153,8 @@ Any PMEDIA backend implementing the common protocol
   -> Direct Generic API Source or Notification Gateway
   -> pmedia.notifications plugin
   -> Pet shows alert/bubble/sound/OS notification
+  -> User opens or dismisses the alert
+  -> Plugin posts ack/dismiss back to the source
 ```
 
 ## Security notes
